@@ -81,7 +81,7 @@ class MACHPay extends PaymentModule {
     }
 
     public function getContent() {
-        if (((bool)Tools::isSubmit('submitMACHPayModule')) == true) {
+        if (Tools::isSubmit('submitMACHPayModule')) {
             $this->postValidation();
 
             if ( ! count($this->_post_errors)) {
@@ -187,8 +187,7 @@ class MACHPay extends PaymentModule {
         $sandbox_form = array(
             'form' => array(
                 'legend' => array(
-                    'title' => $this->l('Configuración del ambiente de pruebas'),
-                    'icon'  => 'icon-cogs'
+                    'title' => $this->l('Configuración del ambiente de pruebas')
                 ),
                 'input'  => array(
                     array(
@@ -196,6 +195,7 @@ class MACHPay extends PaymentModule {
                         'prefix'   => '<i class="icon icon-link"></i>',
                         'label'    => $this->l('URL del ambiente de pruebas'),
                         'name'     => 'MACHPAY_SANDBOX_URL',
+                        'desc'     => $this->l('Ingresa la URL sin un "/" al final de esta'),
                         'required' => false
                     ),
                     array(
@@ -214,8 +214,7 @@ class MACHPay extends PaymentModule {
         $production_form = array(
             'form' => array(
                 'legend' => array(
-                    'title' => $this->l('Configuración del ambiente de producción'),
-                    'icon'  => 'icon-cogs'
+                    'title' => $this->l('Configuración del ambiente de producción')
                 ),
                 'input'  => array(
                     array(
@@ -223,6 +222,7 @@ class MACHPay extends PaymentModule {
                         'prefix'   => '<i class="icon icon-link"></i>',
                         'label'    => $this->l('URL del ambiente de producción'),
                         'name'     => 'MACHPAY_PRODUCTION_URL',
+                        'desc'     => $this->l('Ingresa la URL sin un "/" al final de esta'),
                         'required' => false
                     ),
                     array(
@@ -238,10 +238,30 @@ class MACHPay extends PaymentModule {
             )
         );
 
+        $webhook_url = array(
+            'form' => array(
+                'legend' => array(
+                    'title' => $this->l('Webhook')
+                ),
+                'input'  => array(
+                    array(
+                        'type'     => 'text',
+                        'prefix'   => '<i class="icon icon-link"></i>',
+                        'label'    => $this->l('URL para configurar como endpoint de webhook'),
+                        'name'     => 'MACHPAY_WEBHOOK',
+                        'desc'     => $this->l('Configura esta URL como webhook en MACH Pay para recibir el procesamiento de los pagos'),
+                        'disabled' => true,
+                        'required' => false
+                    )
+                )
+            )
+        );
+
         return array(
             $mode_form,
             $sandbox_form,
-            $production_form
+            $production_form,
+            $webhook_url
         );
     }
 
@@ -252,6 +272,7 @@ class MACHPay extends PaymentModule {
             'MACHPAY_SANDBOX_API_KEY'    => Configuration::get('MACHPAY_SANDBOX_API_KEY'),
             'MACHPAY_PRODUCTION_URL'     => Configuration::get('MACHPAY_PRODUCTION_URL'),
             'MACHPAY_PRODUCTION_API_KEY' => Configuration::get('MACHPAY_PRODUCTION_API_KEY'),
+            'MACHPAY_WEBHOOK'            => $this->context->link->getModuleLink($this->name, 'webhook')
         );
     }
 
@@ -282,10 +303,17 @@ class MACHPay extends PaymentModule {
         return false;
     }
 
-    public function getMACHPayPaymentOptions() {
+    /**
+     * Genera la configuración para mostrar la opción de pago MACH Pay en el checkout
+     *
+     * Este método debe devolver un arreglo aunque se trate de sola una opción de pago, ya que internamente PrestaShop espera este tipo de dato
+     *
+     * @return \PrestaShop\PrestaShop\Core\Payment\PaymentOption[]
+     */
+    public function getMACHPayPaymentOptions(): array {
         $machpay_payment_option = new PaymentOption();
         $machpay_payment_option->setCallToActionText('Pago con MACH Pay')
-            ->setAction($this->context->link->getModuleLink($this->name, 'createPayment', [], true))
+            ->setAction($this->context->link->getModuleLink($this->name, 'createPayment'))
             ->setLogo(Media::getMediaPath(_PS_MODULE_DIR_ . $this->name . '/views/img/machpay.png'));
 
         return array($machpay_payment_option);
@@ -305,37 +333,11 @@ class MACHPay extends PaymentModule {
         return $this->fetch('module:machpay/views/templates/hook/payment_return.tpl');
     }
 
-    public static function makecURLRequest(string $endpoint, array $request_data) {
-        $headers[] = 'Content-type: application/json';
-        $headers[] = 'Authorization: Bearer ' . MACHPay::getConfiguration()['machpay_api_key'];
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_URL, MACHPay::getConfiguration()['machpay_api_url'] . $endpoint);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'PrestaShop MACHPay/' . MACHPay::$machpay_version);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request_data));
-
-        $response = curl_exec($ch);
-
-        $curl_error_code = curl_errno($ch);
-        $curl_error_message = curl_error($ch);
-        $http_status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $http_error = in_array(floor($http_status_code / 100), array(
-            4,
-            5
-        ));
-
-        $error = ! ($curl_error_code === 0) || $http_error;
-
-        if ($error) {
-            return false;
-        } else {
-            return $response;
-        }
-    }
-
+    /**
+     * Obtiene la configuración del módulo de acuerdo al ambiente en el que se está trabajando
+     *
+     * @return array
+     */
     public static function getConfiguration(): array {
         if (Configuration::get('MACHPAY_IN_PRODUCTION')) {
             return array(
@@ -347,6 +349,55 @@ class MACHPay extends PaymentModule {
                 'machpay_api_url' => Configuration::get('MACHPAY_SANDBOX_URL'),
                 'machpay_api_key' => Configuration::get('MACHPAY_SANDBOX_API_KEY')
             );
+        }
+    }
+
+    /*
+     * Disclaimer:
+     * Estas solicitudes se podrían hacer con Guzzle, pero según leí la versión que viene por defecto con PrestaShop 1.7 es una bastante desactualizada. Ergo, cURL
+     */
+    public static function makePOSTRequest(string $endpoint, array $request_data) {
+        $headers[] = 'Content-type: application/json';
+        $headers[] = 'Authorization: Bearer ' . MACHPay::getConfiguration()['machpay_api_key'];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_URL, MACHPay::getConfiguration()['machpay_api_url'] . $endpoint);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'PrestaShop MACHPay/' . MACHPay::$machpay_version);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request_data));
+
+        return MACHPay::processcURLResponse($ch);
+    }
+
+    public static function makeGETRequest(string $endpoint) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . MACHPay::getConfiguration()['machpay_api_key']]);
+        curl_setopt($ch, CURLOPT_URL, MACHPay::getConfiguration()['machpay_api_url'] . $endpoint);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'PrestaShop MACHPay/' . MACHPay::$machpay_version);
+
+        return MACHPay::processcURLResponse($ch);
+    }
+
+    private static function processcURLResponse($curl_handle) {
+        $response = curl_exec($curl_handle);
+
+        $curl_error_code = curl_errno($curl_handle);
+        $curl_error_message = curl_error($curl_handle);
+        $http_status_code = curl_getinfo($curl_handle, CURLINFO_HTTP_CODE);
+        $http_error = in_array(floor($http_status_code / 100), array(
+            4,
+            5
+        ));
+
+        $error = ! ($curl_error_code === 0) || $http_error;
+
+        if ($error) {
+            return false;
+        } else {
+            return $response;
         }
     }
 }

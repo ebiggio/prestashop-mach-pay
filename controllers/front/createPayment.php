@@ -28,25 +28,46 @@ class MACHPayCreatePaymentModuleFrontController extends ModuleFrontController {
         try {
             $cart_amount = $cart->getOrderTotal();
         } catch (Exception $e) {
-            $cart_amount = 0;
+            return;
         }
 
         $payment_details = [
             'payment' => [
                 'amount'      => (int)$cart_amount,
-                'title'       => 'Pago en ' . Configuration::get('PS_SHOP_NAME'),
+                'title'       => 'Pago en ' . Configuration::get('PS_SHOP_NAME') . ' | Carrito ' . $cart->id,
                 'upstream_id' => (string)$cart->id
             ]
         ];
 
-        $machpay_response = MACHPay::makecURLRequest('/payments', $payment_details);
+        // Generamos la intención de pago
+        if ($machpay_post_response = MACHPay::makePOSTRequest('/payments', $payment_details)) {
+            $machpay_json_response = json_decode($machpay_post_response, true);
 
-        if ($machpay_response) {
-            // TODO
-        } else {
-            PrestaShopLogger::addLog('MACH Pay: error al intentar generar un intento de pago (BusinessPayment) ([' . MACHPay::getConfiguration()['machpay_api_url'] . ']');
+            $business_payment_id = $machpay_json_response['business_payment_id'];
 
-            $this->setTemplate('module:machpay/views/templates/front/payment_error.tpl');
+            // Obtenemos el QR en base64 desde MACH haciendo una solicitud GET
+            if ($machpay_get_response = MACHPay::makeGETRequest('/payments/' . $business_payment_id . '/qr')) {
+                $machpay_json_response = json_decode($machpay_get_response, true);
+
+                $this->context->smarty->assign(
+                    [
+                        'machpay_logo' => Media::getMediaPath(_PS_MODULE_DIR_ . 'machpay/views/img/machpay.png'),
+                        'qr' => $machpay_json_response['image_base_64']
+                    ]
+                );
+
+                $this->setTemplate('module:machpay/views/templates/front/present_qr.tpl');
+
+                return;
+            }
         }
+
+        PrestaShopLogger::addLog('MACH Pay: error al intentar generar una intención de pago en [' . MACHPay::getConfiguration()['machpay_api_url'] . ']'
+            , 3
+            , null
+            , 'Cart'
+            , $cart->id);
+
+        $this->setTemplate('module:machpay/views/templates/front/payment_error.tpl');
     }
 }
