@@ -63,6 +63,7 @@ class MACHPay extends PaymentModule {
         Configuration::updateValue('MACHPAY_SANDBOX_API_KEY', '');
         Configuration::updateValue('MACHPAY_PRODUCTION_URL', 'https://biz.soymach.com');
         Configuration::updateValue('MACHPAY_PRODUCTION_API_KEY', '');
+        Configuration::updateValue('MACHPAY_WEBHOOK_IPS', '10.198.7.238, 10.198.8.203, 10.198.11.42, 10.198.15.241');
 
         return parent::install()
             && $this->registerHook('paymentOptions')
@@ -76,6 +77,7 @@ class MACHPay extends PaymentModule {
         Configuration::deleteByName('MACHPAY_SANDBOX_API_KEY');
         Configuration::deleteByName('MACHPAY_PRODUCTION_URL');
         Configuration::deleteByName('MACHPAY_PRODUCTION_API_KEY');
+        Configuration::deleteByName('MACHPAY_WEBHOOK_IPS');
 
         return parent::uninstall();
     }
@@ -124,6 +126,18 @@ class MACHPay extends PaymentModule {
 
             if ( ! Tools::getValue('MACHPAY_SANDBOX_API_KEY')) {
                 $this->_post_errors[] = $this->l('La llave API del ambiente sandbox es requerida');
+            }
+        }
+
+        if ( ! Tools::getValue('MACHPAY_WEBHOOK_IPS')) {
+            $this->_post_errors[] = $this->l('Se necesita al menos una IP válida autorizada para consumir el webhook para que este módulo funcione correctamente');
+        } else {
+            foreach (explode(',', Tools::getValue('MACHPAY_WEBHOOK_IPS')) as $ip) {
+                if ( ! filter_var(trim($ip), FILTER_VALIDATE_IP)) {
+                    $this->_post_errors[] = $this->l('La IP ingresada no parece ser válida');
+
+                    break;
+                }
             }
         }
     }
@@ -177,10 +191,7 @@ class MACHPay extends PaymentModule {
                             )
                         )
                     )
-                ),
-                'submit' => array(
-                    'title' => $this->l('Guardar'),
-                ),
+                )
             )
         );
 
@@ -204,9 +215,6 @@ class MACHPay extends PaymentModule {
                         'name'     => 'MACHPAY_SANDBOX_API_KEY',
                         'required' => false
                     )
-                ),
-                'submit' => array(
-                    'title' => $this->l('Guardar'),
                 )
             )
         );
@@ -231,9 +239,6 @@ class MACHPay extends PaymentModule {
                         'name'     => 'MACHPAY_PRODUCTION_API_KEY',
                         'required' => false
                     )
-                ),
-                'submit' => array(
-                    'title' => $this->l('Guardar'),
                 )
             )
         );
@@ -249,10 +254,20 @@ class MACHPay extends PaymentModule {
                         'prefix'   => '<i class="icon icon-link"></i>',
                         'label'    => $this->l('URL para configurar como endpoint de webhook'),
                         'name'     => 'MACHPAY_WEBHOOK',
-                        'desc'     => $this->l('Configura esta URL como webhook en MACH Pay para recibir el procesamiento de los pagos'),
+                        'desc'     => $this->l('Configura esta URL como webhook en MACH Pay para recibir el procesamiento de los pagos. Ten especial atención con las URLs amigables y los lenguajes configurado; en caso que desinstales un lenguaje después de haber utilizado este valor, la URL podría cambiar'),
                         'disabled' => true,
                         'required' => false
-                    )
+                    ),
+                    array(
+                        'type'     => 'text',
+                        'label'    => $this->l('IPs autorizadas a invocar el endpoint'),
+                        'name'     => 'MACHPAY_WEBHOOK_IPS',
+                        'desc'     => $this->l('Lista de IPs, separadas por comas, autorizadas a llamar el endpoint antes señalado. Si por alguna razón el webhook no funciona, confirma que estos valores correspondan a los servidores de MACH'),
+                        'required' => true
+                    ),
+                ),
+                'submit' => array(
+                    'title' => $this->l('Guardar'),
                 )
             )
         );
@@ -272,7 +287,8 @@ class MACHPay extends PaymentModule {
             'MACHPAY_SANDBOX_API_KEY'    => Configuration::get('MACHPAY_SANDBOX_API_KEY'),
             'MACHPAY_PRODUCTION_URL'     => Configuration::get('MACHPAY_PRODUCTION_URL'),
             'MACHPAY_PRODUCTION_API_KEY' => Configuration::get('MACHPAY_PRODUCTION_API_KEY'),
-            'MACHPAY_WEBHOOK'            => $this->context->link->getModuleLink($this->name, 'webhook')
+            'MACHPAY_WEBHOOK'            => $this->context->link->getModuleLink($this->name, 'webhook'),
+            'MACHPAY_WEBHOOK_IPS'        => Configuration::get('MACHPAY_WEBHOOK_IPS'),
         );
     }
 

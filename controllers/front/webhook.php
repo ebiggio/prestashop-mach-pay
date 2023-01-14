@@ -5,13 +5,28 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
      * @see FrontController::postProcess()
      */
     public function postProcess() {
+        // Verificamos que la máquina que está invocando el webhook está autorizada a hacerlo, de acuerdo a la lista de IPs configuradas en el módulo
+        $remote_ip = $_SERVER['REMOTE_ADDR'];
+        $is_authorized = false;
+
+        foreach (explode(',', Tools::getValue('MACHPAY_WEBHOOK_IPS')) as $authorized_ip) {
+            if ($remote_ip == trim($authorized_ip)) {
+                $is_authorized = true;
+
+                break;
+            }
+        }
+
+        if ( ! $is_authorized) {
+            return;
+        }
+
         /*
          * Debemos utilizar "file_get_contents" para capturar el cuerpo de la solicitud. Si bien el webhook se invoca mediante POST, la variable global $_POST
          * en estas circunstancias no resulta útil, ya que los datos de la solicitud no son enviados a través de un formulario HTTP sino como contenido "application/json"
          */
         $webhook_notification = file_get_contents('php://input');
 
-        // TODO Restringir la invocación a esta URL por IP
         if ( ! $webhook_notification) {
             return;
         }
