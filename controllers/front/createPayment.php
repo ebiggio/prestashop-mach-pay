@@ -26,14 +26,14 @@ class MACHPayCreatePaymentModuleFrontController extends ModuleFrontController {
         }
 
         try {
-            $cart_amount = $cart->getOrderTotal();
+            $cart_total = $cart->getOrderTotal();
         } catch (Exception $e) {
             return;
         }
 
         $payment_details = [
             'payment' => [
-                'amount'      => (int)$cart_amount,
+                'amount'      => (int)$cart_total,
                 'title'       => 'Pago en ' . Configuration::get('PS_SHOP_NAME') . ' | Carrito ' . $cart->id,
                 'upstream_id' => (string)$cart->id
             ]
@@ -47,26 +47,54 @@ class MACHPayCreatePaymentModuleFrontController extends ModuleFrontController {
 
             // Obtenemos el QR en base64 desde MACH haciendo una solicitud GET
             if ($machpay_get_response = MACHPay::makeGETRequest('/payments/' . $business_payment_id . '/qr')) {
-                $machpay_json_response = json_decode($machpay_get_response, true);
+                try {
+                    // Guardamos la información de la transacción generada en MACH Pay
+                    Db::getInstance()->insert('machpay', [
+                        'id_cart'             => (int)$cart->id,
+                        'cart_total'          => (int)$cart_total,
+                        'business_payment_id' => pSQL($business_payment_id),
+                        'machpay_created_at'  => pSQL($machpay_json_response['created_at'])
+                    ]);
 
-                $this->context->smarty->assign(
-                    [
-                        'machpay_logo' => Media::getMediaPath(_PS_MODULE_DIR_ . 'machpay/views/img/machpay.png'),
-                        'qr' => $machpay_json_response['image_base_64']
-                    ]
-                );
+                    $machpay_json_response = json_decode($machpay_get_response, true);
 
-                $this->setTemplate('module:machpay/views/templates/front/present_qr.tpl');
+                    $this->context->smarty->assign(
+                        [
+                            'machpay_logo' => Media::getMediaPath(_PS_MODULE_DIR_ . 'machpay/views/img/machpay.png'),
+                            'qr'           => $machpay_json_response['image_base_64']
+                        ]
+                    );
 
-                return;
+                    $this->setTemplate('module:machpay/views/templates/front/present_qr.tpl');
+
+                    return;
+                } catch (PrestaShopDatabaseException $e) {
+                    PrestaShopLogger::addLog('MACH Pay: error al intentar guardar la información de la transacción de MACH Pay en la base de datos',
+                        3,
+                        null,
+                        'DB',
+                        $cart->id);
+                } catch (PrestaShopException $e) {
+                    PrestaShopLogger::addLog('MACH Pay: error al intentar presentar la vista con el código QR de pago',
+                        3,
+                        null,
+                        'Template',
+                        $cart->id);
+                }
+            } else {
+                PrestaShopLogger::addLog('MACH Pay: error al intentar obtener el QR desde la API de MACH Pay',
+                    3,
+                    null,
+                    'Cart',
+                    $cart->id);
             }
+        } else {
+            PrestaShopLogger::addLog('MACH Pay: error al intentar generar una intención de pago en [' . MACHPay::getConfiguration()['machpay_api_url'] . ']',
+                3,
+                null,
+                'Cart',
+                $cart->id);
         }
-
-        PrestaShopLogger::addLog('MACH Pay: error al intentar generar una intención de pago en [' . MACHPay::getConfiguration()['machpay_api_url'] . ']'
-            , 3
-            , null
-            , 'Cart'
-            , $cart->id);
 
         $this->setTemplate('module:machpay/views/templates/front/payment_error.tpl');
     }
