@@ -14,6 +14,7 @@ Módulo de pago para PrestaShop que permite realizar pagos con la aplicación MA
 * Definir si se desea utilizar el módulo en el ambiente de sandbox o producción, ingresando la `API key` según corresponda
   * Puedes conseguir tu `API key` en el [sitio oficial de MACH Pay](https://pay.somosmach.com/)
 * (Opcional) Configurar las URLs base de la API de MACH. Estas no deberían cambiar de las que sugiere por defecto el módulo al instalarse, pero en caso de ser necesario, se deben ingresar **sin** trailing slash (`/`)
-* Configurar como webhook en el back office de MACH Pay la URL que se despliega en la configuración del módulo. Esta URL sólo se muestra como referencia en el formulario, ya que su valor no se puede cambiar 
+* Configurar como webhook en el back office de MACH Pay la URL que se despliega en la configuración del módulo. Esta URL sólo se muestra como referencia en el formulario para un fácil *copy/paste*
+* (Opcional) Especificar las IPs autorizadas a invocar el webhook. Estas IPs corresponden a los servidores de MACH desde donde se despachan los eventos. Al igual que las URLs base de la API, la lista que se presenta al instalar el módulo no debería cambiar, pero si lo deseas, puedes alterar la lista ingresando IPs separadas por comas
 
 **Work in progress!**
