@@ -30,4 +30,17 @@
         {/block}
     </div>
 </div>
+<script>
+    {literal}
+        function resolveRedirect(event) {
+            if (JSON.parse(event.data).url) {
+                evtSource.close();
+                location = JSON.parse(event.data).url;
+            }
+        }
+
+        let evtSource = new EventSource("{/literal}{$event_source_url}{literal}");
+        evtSource.addEventListener("redirect", resolveRedirect, false);
+    {/literal}
+</script>
 {/block}
