@@ -61,6 +61,7 @@ class MACHPay extends PaymentModule {
         include(dirname(__FILE__) . '/sql/install.php');
 
         Configuration::updateValue('MACHPAY_IN_PRODUCTION', false);
+        Configuration::updateValue('MACHPAY_MUST_CONFIRM', true);
         Configuration::updateValue('MACHPAY_SANDBOX_URL', 'https://biz-sandbox.soymach.com');
         Configuration::updateValue('MACHPAY_SANDBOX_API_KEY', '');
         Configuration::updateValue('MACHPAY_PRODUCTION_URL', 'https://biz.soymach.com');
@@ -75,6 +76,7 @@ class MACHPay extends PaymentModule {
 
     public function uninstall(): bool {
         Configuration::deleteByName('MACHPAY_IN_PRODUCTION');
+        Configuration::deleteByName('MACHPAY_MUST_CONFIRM');
         Configuration::deleteByName('MACHPAY_SANDBOX_URL');
         Configuration::deleteByName('MACHPAY_SANDBOX_API_KEY');
         Configuration::deleteByName('MACHPAY_PRODUCTION_URL');
@@ -192,6 +194,29 @@ class MACHPay extends PaymentModule {
                                 'label' => $this->l('Sandbox')
                             )
                         )
+                    ),
+                    array(
+                        'type'    => 'switch',
+                        'label'   => $this->l('¿Se debe confirmar el pago mediante la API?'),
+                        'name'    => 'MACHPAY_MUST_CONFIRM',
+                        'is_bool' => true,
+                        'desc'    => $this->l('Indica si, una vez que se recibe mediante webhook la notificación de un pago completado,
+                            este luego debe ser confirmado mediante API posterior a las validaciones de la tienda. Esta opción dependerá de cómo esté configurada
+                            la captura de los pagos para el negocio en MACH Pay. Si las capturas son manuales, esta opción debe estar activa. De lo contrario,
+                            al ser las capturas automáticas, esta opción debe estar apagada, ya que el módulo intentará confirmar un pago completado
+                            mediante la API, recibiendo un error al estar el pago ya confirmado y no generando el pedido correspondiente en la tienda.'),
+                        'values'  => array(
+                            array(
+                                'id'    => 'active_off',
+                                'value' => true,
+                                'label' => $this->l('Sí')
+                            ),
+                            array(
+                                'id'    => 'active_on',
+                                'value' => false,
+                                'label' => $this->l('No')
+                            )
+                        )
                     )
                 )
             )
@@ -256,7 +281,9 @@ class MACHPay extends PaymentModule {
                         'prefix'   => '<i class="icon icon-link"></i>',
                         'label'    => $this->l('URL para configurar como endpoint de webhook'),
                         'name'     => 'MACHPAY_WEBHOOK',
-                        'desc'     => $this->l('Configura esta URL como webhook en MACH Pay para recibir el procesamiento de los pagos. Ten especial atención con las URLs amigables y los lenguajes configurado; en caso que desinstales un lenguaje después de haber utilizado este valor, la URL podría cambiar'),
+                        'desc'     => $this->l('Configura esta URL como webhook en MACH Pay para recibir el procesamiento de los pagos. Ten especial
+                            atención con las URLs amigables y los lenguajes configurado; en caso que desinstales un lenguaje después de haber utilizado este
+                            valor, la URL podría cambiar'),
                         'disabled' => true,
                         'required' => false
                     ),
@@ -264,7 +291,8 @@ class MACHPay extends PaymentModule {
                         'type'     => 'text',
                         'label'    => $this->l('IPs autorizadas a invocar el endpoint'),
                         'name'     => 'MACHPAY_WEBHOOK_IPS',
-                        'desc'     => $this->l('Lista de IPs, separadas por comas, autorizadas a llamar el endpoint antes señalado. Si por alguna razón el webhook no funciona, confirma que estos valores correspondan a los servidores de MACH'),
+                        'desc'     => $this->l('Lista de IPs, separadas por comas, autorizadas a llamar el endpoint antes señalado. Si por alguna razón
+                            el webhook no funciona, confirma que estos valores correspondan a los servidores de MACH'),
                         'required' => true
                     ),
                 ),
@@ -285,6 +313,7 @@ class MACHPay extends PaymentModule {
     protected function getConfigFormValues(): array {
         return array(
             'MACHPAY_IN_PRODUCTION'      => Configuration::get('MACHPAY_IN_PRODUCTION'),
+            'MACHPAY_MUST_CONFIRM'       => Configuration::get('MACHPAY_MUST_CONFIRM'),
             'MACHPAY_SANDBOX_URL'        => Configuration::get('MACHPAY_SANDBOX_URL'),
             'MACHPAY_SANDBOX_API_KEY'    => Configuration::get('MACHPAY_SANDBOX_API_KEY'),
             'MACHPAY_PRODUCTION_URL'     => Configuration::get('MACHPAY_PRODUCTION_URL'),
