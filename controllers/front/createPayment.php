@@ -40,28 +40,28 @@ class MACHPayCreatePaymentModuleFrontController extends ModuleFrontController {
         ];
 
         // Generamos la intención de pago
-        if ($machpay_post_response = MACHPay::makePOSTRequest('/payments', $payment_details)) {
-            $machpay_json_response = json_decode($machpay_post_response, true);
-
-            $business_payment_id = $machpay_json_response['business_payment_id'];
+        if ($machpay_post_response = MACHPayAPI::makePOSTRequest('/payments', $payment_details)) {
+            $machpay_business_payment = json_decode($machpay_post_response, true);
 
             // Obtenemos el QR en base64 desde MACH haciendo una solicitud GET
-            if ($machpay_get_response = MACHPay::makeGETRequest('/payments/' . $business_payment_id . '/qr')) {
+            if ($machpay_get_response = MACHPayAPI::makeGETRequest('/payments/' . $machpay_business_payment['business_payment_id'] . '/qr')) {
                 try {
                     // Guardamos la información de la transacción generada en MACH Pay
                     Db::getInstance()->insert('machpay', [
                         'id_cart'             => (int)$cart->id,
                         'cart_total'          => (int)$cart_total,
-                        'business_payment_id' => pSQL($business_payment_id),
-                        'machpay_created_at'  => pSQL($machpay_json_response['created_at'])
+                        'business_payment_id' => pSQL($machpay_business_payment['business_payment_id']),
+                        'machpay_created_at'  => pSQL($machpay_business_payment['created_at'])
                     ]);
 
-                    $machpay_json_response = json_decode($machpay_get_response, true);
+                    $machpay_business_payment_qr = json_decode($machpay_get_response, true);
 
                     $this->context->smarty->assign(
                         [
-                            'machpay_logo' => Media::getMediaPath(_PS_MODULE_DIR_ . 'machpay/views/img/machpay.png'),
-                            'qr'           => $machpay_json_response['image_base_64']
+                            'deeplink'         => $machpay_business_payment['url'],
+                            'machpay_logo'     => Media::getMediaPath(_PS_MODULE_DIR_ . 'machpay/views/img/machpay.png'),
+                            'qr'               => $machpay_business_payment_qr['image_base_64'],
+                            'event_source_url' => $this->context->link->getModuleLink($this->module->name, 'eventSource', ['bpi' => $machpay_business_payment['business_payment_id']])
                         ]
                     );
 
