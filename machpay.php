@@ -355,7 +355,7 @@ class MACHPay extends PaymentModule {
     }
 
     /**
-     * Genera la configuración para mostrar la opción de pago MACH Pay en el checkout
+     * Genera la opción de pago MACH Pay que se despliega en el checkout
      *
      * Este método debe devolver un arreglo aunque se trate de sola una opción de pago, ya que internamente PrestaShop espera este tipo de dato
      *
@@ -371,7 +371,7 @@ class MACHPay extends PaymentModule {
     }
 
     /**
-     * Despliega un mensaje en la página de confirmación (pago exitoso) del pedido
+     * Despliega un mensaje de agradecimiento en la página de confirmación (pago exitoso) del pedido
      *
      * @param array $params
      * @return string
@@ -380,6 +380,8 @@ class MACHPay extends PaymentModule {
         if ( ! $this->active) {
             return '';
         }
+
+        $this->smarty->assign(['machpay_logo' => Media::getMediaPath(_PS_MODULE_DIR_ . 'machpay/views/img/machpay.png')]);
 
         return $this->fetch('module:machpay/views/templates/hook/payment_return.tpl');
     }
