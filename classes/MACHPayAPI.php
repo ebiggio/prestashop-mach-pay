@@ -42,6 +42,10 @@ class MACHPayAPI {
         $error = ! ($curl_error_code === 0) || $http_error;
 
         if ($error) {
+            PrestaShopLogger::addLog('MACH Pay: error en llamada a la API: código de respuesta [' . $http_status_code . '] - cuerpo de la respuesta ['
+                . print_r($response, true) . ']',
+                3);
+
             return false;
         } else {
             return $response;
