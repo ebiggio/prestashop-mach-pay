@@ -61,7 +61,7 @@ class MACHPay extends PaymentModule {
         include(dirname(__FILE__) . '/sql/install.php');
 
         Configuration::updateValue('MACHPAY_IN_PRODUCTION', false);
-        Configuration::updateValue('MACHPAY_MUST_CONFIRM', true);
+        Configuration::updateValue('MACHPAY_MANUAL_CONFIRMATION', true);
         Configuration::updateValue('MACHPAY_SANDBOX_URL', 'https://biz-sandbox.soymach.com');
         Configuration::updateValue('MACHPAY_SANDBOX_API_KEY', '');
         Configuration::updateValue('MACHPAY_PRODUCTION_URL', 'https://biz.soymach.com');
@@ -76,7 +76,7 @@ class MACHPay extends PaymentModule {
 
     public function uninstall(): bool {
         Configuration::deleteByName('MACHPAY_IN_PRODUCTION');
-        Configuration::deleteByName('MACHPAY_MUST_CONFIRM');
+        Configuration::deleteByName('MACHPAY_MANUAL_CONFIRMATION');
         Configuration::deleteByName('MACHPAY_SANDBOX_URL');
         Configuration::deleteByName('MACHPAY_SANDBOX_API_KEY');
         Configuration::deleteByName('MACHPAY_PRODUCTION_URL');
@@ -185,7 +185,8 @@ class MACHPay extends PaymentModule {
                         'label'   => $this->l('¿En producción?'),
                         'name'    => 'MACHPAY_IN_PRODUCTION',
                         'is_bool' => true,
-                        'desc'    => $this->l('Indica si el módulo debe trabajar con pago reales o con operaciones de prueba, de acuerdo al ambiente seleccionado.'),
+                        'desc'    => $this->l('Indica si el módulo debe trabajar con pago reales o con operaciones de prueba, de acuerdo al ambiente
+                            seleccionado'),
                         'values'  => array(
                             array(
                                 'id'    => 'active_off',
@@ -202,13 +203,15 @@ class MACHPay extends PaymentModule {
                     array(
                         'type'    => 'switch',
                         'label'   => $this->l('¿Se debe confirmar el pago mediante la API?'),
-                        'name'    => 'MACHPAY_MUST_CONFIRM',
+                        'name'    => 'MACHPAY_MANUAL_CONFIRMATION',
                         'is_bool' => true,
                         'desc'    => $this->l('Indica si, una vez que se recibe mediante webhook la notificación de un pago completado,
                             este luego debe ser confirmado mediante API posterior a las validaciones de la tienda. Esta opción dependerá de cómo esté configurada
-                            la captura de los pagos para el negocio en MACH Pay. Si las capturas son manuales, esta opción debe estar activa. De lo contrario,
-                            al ser las capturas automáticas, esta opción debe estar apagada, ya que el módulo intentará confirmar un pago completado
-                            mediante la API, recibiendo un error al estar el pago ya confirmado y no generando el pedido correspondiente en la tienda.'),
+                            la captura de los pagos para el negocio en MACH Pay. Si las capturas son manuales (funcionamiento por defecto en producción), esta
+                            opción debe estar activa. De lo contrario, al ser las capturas automáticas, esta opción debe estar apagada, ya que el módulo
+                            intentará confirmar un pago completado mediante la API, recibiendo un error al estar el pago ya confirmado y no generando el pedido
+                            correspondiente en la tienda. Es importante tener presente que cuando la captura es manual, un pago completado que no es confirmado
+                            generará una reversa transcurridos 5 minutos.'),
                         'values'  => array(
                             array(
                                 'id'    => 'active_off',
@@ -316,14 +319,14 @@ class MACHPay extends PaymentModule {
 
     protected function getConfigFormValues(): array {
         return array(
-            'MACHPAY_IN_PRODUCTION'      => Configuration::get('MACHPAY_IN_PRODUCTION'),
-            'MACHPAY_MUST_CONFIRM'       => Configuration::get('MACHPAY_MUST_CONFIRM'),
-            'MACHPAY_SANDBOX_URL'        => Configuration::get('MACHPAY_SANDBOX_URL'),
-            'MACHPAY_SANDBOX_API_KEY'    => Configuration::get('MACHPAY_SANDBOX_API_KEY'),
-            'MACHPAY_PRODUCTION_URL'     => Configuration::get('MACHPAY_PRODUCTION_URL'),
-            'MACHPAY_PRODUCTION_API_KEY' => Configuration::get('MACHPAY_PRODUCTION_API_KEY'),
-            'MACHPAY_WEBHOOK'            => $this->context->link->getModuleLink($this->name, 'webhook'),
-            'MACHPAY_WEBHOOK_IPS'        => Configuration::get('MACHPAY_WEBHOOK_IPS'),
+            'MACHPAY_IN_PRODUCTION'       => Configuration::get('MACHPAY_IN_PRODUCTION'),
+            'MACHPAY_MANUAL_CONFIRMATION' => Configuration::get('MACHPAY_MANUAL_CONFIRMATION'),
+            'MACHPAY_SANDBOX_URL'         => Configuration::get('MACHPAY_SANDBOX_URL'),
+            'MACHPAY_SANDBOX_API_KEY'     => Configuration::get('MACHPAY_SANDBOX_API_KEY'),
+            'MACHPAY_PRODUCTION_URL'      => Configuration::get('MACHPAY_PRODUCTION_URL'),
+            'MACHPAY_PRODUCTION_API_KEY'  => Configuration::get('MACHPAY_PRODUCTION_API_KEY'),
+            'MACHPAY_WEBHOOK'             => $this->context->link->getModuleLink($this->name, 'webhook'),
+            'MACHPAY_WEBHOOK_IPS'         => Configuration::get('MACHPAY_WEBHOOK_IPS'),
         );
     }
 
