@@ -20,7 +20,7 @@ class MACHPayEventSourceModuleFrontController extends ModuleFrontController {
                     $order = new Order(Order::getIdByCartId((int)$result['id_cart']));
 
                     if ($order->getCurrentState() == Configuration::get('PS_OS_PAYMENT')) {
-                        $redirect_url = 'index.php?controller=order-confirmation&id_cart='.$cart->id.'&id_module='.$this->module->id.'&id_order='.$order->id.'&key='.$cart->secure_key;
+                        $redirect_url = '/index.php?controller=order-confirmation&id_cart='.$cart->id.'&id_module='.$this->module->id.'&id_order='.$order->id.'&key='.$cart->secure_key;
                     } else {
                         $redirect_url = $this->context->link->getModuleLink($this->module->name, 'paymentError');
                     }

@@ -18,11 +18,6 @@
     <div class="cart-grid-right col-xs-12 col-lg-4">
         {block name='cart_summary'}
         <div class="card cart-summary">
-
-            {block name='hook_shopping_cart'}
-            {hook h='displayShoppingCart'}
-            {/block}
-
             {block name='cart_totals'}
             {include file='checkout/_partials/cart-detailed-totals.tpl' cart=$cart}
             {/block}
@@ -35,7 +30,7 @@
         function resolveRedirect(event) {
             if (JSON.parse(event.data).url) {
                 evtSource.close();
-                location = JSON.parse(event.data).url;
+                window.location.replace(JSON.parse(event.data).url);
             }
         }
 
