@@ -74,7 +74,7 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
             'event_name' => pSQL($webhook_data['event_name']),
         ]);
 
-        // Consultamos por el detalle del pago realizado en MACH Pay que desencadenó el webhook
+        // Consultamos por el detalle de la transacción que desencadenó el webhook en MACH Pay
         if ($machpay_get_response = MACHPayAPI::makeGETRequest('/payments/' . $business_payment_id)) {
             $machpay_business_payment_data = json_decode($machpay_get_response, true);
         } else {
@@ -137,6 +137,8 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
                             null,
                             'Cart',
                             $cart->id);
+
+                        DB::getInstance()->update('machpay', ['machpay_webhook_event' => 'prestashop_error'], 'business_payment_id = "' . pSQL($business_payment_id) . '"');
 
                         $this->reversePayment($machpay_business_payment_data, $cart->id);
 
