@@ -106,7 +106,7 @@ class MACHPay extends PaymentModule {
         $form_values = $this->getConfigFormValues();
 
         foreach (array_keys($form_values) as $key) {
-            if ($key == 'MACHPAY_PRODUCTION_URL' || $key = 'MACHPAY_SANDBOX_URL') {
+            if ($key == 'MACHPAY_PRODUCTION_URL' || $key == 'MACHPAY_SANDBOX_URL') {
                 Configuration::updateValue($key, rtrim(Tools::getValue($key), '/'));
             } else {
                 Configuration::updateValue($key, Tools::getValue($key));
