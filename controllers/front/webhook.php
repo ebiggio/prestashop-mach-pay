@@ -6,10 +6,18 @@
  */
 class MACHPayWebhookModuleFrontController extends ModuleFrontController {
     public function postProcess() {
-        // Verificamos que la máquina que está invocando el webhook está autorizada a hacerlo, de acuerdo a la lista de IPs configuradas en el módulo
+        /*
+         * En caso de que el servidor donde está alojada la tienda funcione con Cloudflare, necesitaremos mirar en otro lado la IP del cliente que se está
+         * intentando conectar, ya que $_SERVER['REMOTE_ADDR'] tendrá una IP de Cloudflare
+         */
+        if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) && filter_var($_SERVER['HTTP_CF_CONNECTING_IP'], FILTER_VALIDATE_IP)) {
+            $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+        }
+
         $remote_ip = $_SERVER['REMOTE_ADDR'];
         $is_authorized = false;
 
+        // Verificamos que la máquina que está invocando el webhook está autorizada a hacerlo, de acuerdo a la lista de IPs configuradas en el módulo
         foreach (explode(',', Configuration::get('MACHPAY_WEBHOOK_IPS')) as $authorized_ip) {
             if ($remote_ip == trim($authorized_ip)) {
                 $is_authorized = true;
