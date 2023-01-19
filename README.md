@@ -9,7 +9,7 @@ Módulo de pago para PrestaShop que permite realizar pagos con la aplicación MA
 
 ## Configuración
 
-* Comprimir todo el contenido de este repositorio en un archivo `zip`
+* Guardar todo el contenido de este repositorio en una carpeta de nombre `machpay`, y luego comprimir dicha carpeta en un archivo `zip`
 * Instalar el módulo mediante la función "Upload module" del back office de PrestaShop, e ingresar a su configuración
 * Definir si se desea utilizar el módulo en el ambiente de sandbox o producción, ingresando la `API key` según corresponda
   * Puedes conseguir tu `API key` en el [sitio oficial de MACH Pay](https://pay.somosmach.com/)
