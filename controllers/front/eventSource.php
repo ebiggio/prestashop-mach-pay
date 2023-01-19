@@ -1,8 +1,5 @@
 <?php
 class MACHPayEventSourceModuleFrontController extends ModuleFrontController {
-    /**
-     * @see FrontController::postProcess()
-     */
     public function postProcess() {
         header('Content-Type: text/event-stream');
         header('Cache-Control: no-cache');

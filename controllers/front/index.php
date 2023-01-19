@@ -2,7 +2,7 @@
 /**
  * MACH Pay - Método de pago para PrestaShop 1.7
  *
- * @author Enzo Biggio (2022)
+ * @author Enzo Biggio (2023)
  * @version 1.0
  * @email ebiggio@gmail.com
  */

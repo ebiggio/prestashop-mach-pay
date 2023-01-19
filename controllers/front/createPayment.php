@@ -1,9 +1,6 @@
 <?php
 
 class MACHPayCreatePaymentModuleFrontController extends ModuleFrontController {
-    /**
-     * @see FrontController::postProcess()
-     */
     public function postProcess() {
         $cart = $this->context->cart;
 
@@ -28,7 +25,7 @@ class MACHPayCreatePaymentModuleFrontController extends ModuleFrontController {
         try {
             $cart_total = $cart->getOrderTotal();
         } catch (Exception $e) {
-            return;
+            Tools::redirect('index.php?controller=order&step=1');
         }
 
         $payment_details = [
@@ -43,7 +40,7 @@ class MACHPayCreatePaymentModuleFrontController extends ModuleFrontController {
         if ($machpay_post_response = MACHPayAPI::makePOSTRequest('/payments', $payment_details)) {
             $machpay_business_payment = json_decode($machpay_post_response, true);
 
-            // Obtenemos el QR en base64 desde MACH haciendo una solicitud GET
+            // Obtenemos el QR en base64 desde MACH
             if ($machpay_get_response = MACHPayAPI::makeGETRequest('/payments/' . $machpay_business_payment['business_payment_id'] . '/qr')) {
                 try {
                     // Guardamos la información de la transacción generada en MACH Pay
