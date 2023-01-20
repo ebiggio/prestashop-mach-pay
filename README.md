@@ -1,4 +1,4 @@
-# (WIP) MACH Pay para PrestaShop 1.7
+# MACH Pay para PrestaShop 1.7
 
 Módulo de pago para PrestaShop que permite realizar pagos con la aplicación MACH Pay.
 
@@ -20,4 +20,7 @@ Módulo de pago para PrestaShop que permite realizar pagos con la aplicación MA
 * Configurar como webhook la URL que despliega la configuración del módulo en el [back office de MACH Pay](https://pay.somosmach.com/settings/webhooks). Esta URL sólo se muestra como referencia en el formulario para un fácil *copy/paste*; su valor no puede ser cambiado
 * (Opcional) Especificar las IPs autorizadas a invocar el webhook. Estas IPs corresponden a los servidores de MACH PAy desde donde se despachan los eventos. Al igual que con las URLs base de la API, la lista que se presenta al instalar el módulo no debería cambiar, pero si lo deseas, puedes cambiar estos valores ingresando IPs separadas por comas
 
-**Work in progress!**
+
+## Ideas de mejoras para un *futuro cercano*
+
+* Permitir especificar los estados a los que debe cambiar un pedido cuando se recibe un evento de pago completado, fallido, expirado y reembolso completado. Actualmente, el módulo usa los valores de configuración de la tienda `PS_OS_PAYMENT`, `PS_OS_ERROR`, `PS_OS_CANCELED`, `PS_OS_REFUND`. Estos cambios (a excepción del que ocurre cuando se completa un pago) a su vez debiesen ser opcionales
