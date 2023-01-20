@@ -5,7 +5,6 @@ Módulo de pago para PrestaShop que permite realizar pagos con la aplicación MA
 ## Requerimientos
 
 * Extensión `cURL` de PHP
-* Tener configurado a Chile (código ISO `CL`) en la tienda donde se desea usar el módulo
 
 ## Configuración
 

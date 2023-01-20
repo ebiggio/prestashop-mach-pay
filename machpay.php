@@ -36,8 +36,6 @@ class MACHPay extends PaymentModule {
         $this->description = 'Método de pago MACH Pay.';
         $this->confirmUninstall = '¿Estás seguro de querer desinstalar este módulo?';
 
-        $this->limited_countries = array('CL');
-
         $this->limited_currencies = array('CPL');
 
         parent::__construct();
@@ -46,14 +44,6 @@ class MACHPay extends PaymentModule {
     public function install(): bool {
         if (extension_loaded('curl') == false) {
             $this->_errors[] = $this->l('Se necesita tener la extensión cURL instalada en el servidor para instalar este módulo');
-
-            return false;
-        }
-
-        $iso_code = Country::getIsoById(Configuration::get('PS_COUNTRY_DEFAULT'));
-
-        if ( ! in_array($iso_code, $this->limited_countries)) {
-            $this->_errors[] = $this->l('Este módulo no está disponible en tu país');
 
             return false;
         }
