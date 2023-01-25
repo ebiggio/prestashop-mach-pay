@@ -32,7 +32,7 @@ class MACHPay extends PaymentModule {
             'max' => _PS_VERSION_
         );
         $this->bootstrap = true;
-        $this->displayName = 'MACH Pay';
+        $this->displayName = 'MACH';
         $this->description = 'Método de pago MACH Pay.';
         $this->confirmUninstall = '¿Estás seguro de querer desinstalar este módulo?';
 

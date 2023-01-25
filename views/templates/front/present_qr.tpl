@@ -5,10 +5,10 @@
     <div class="cart-grid-body col-xs-12 col-lg-8">
         <div>
             <div class="card-block">
-                <h1 class="h1"><img src="{$machpay_logo}" alt=""> {l s='Pago con MACH Pay' mod='machpay'}</h1>
+                <h1 class="h1"><img src="{$machpay_logo}" alt=""> {l s='Pago con MACH' mod='machpay'}</h1>
             </div>
             <div class="text-lg-center text-md-center text-sm-center">
-                <p class="text-sm-center">{l s='Utiliza la aplicación de MACH Pay para escanear el siguiente código QR y autorizar la transacción:' mod='machpay'}</p>
+                <p class="text-sm-center">{l s='Utiliza la aplicación de MACH para escanear el siguiente código QR y autorizar la transacción:' mod='machpay'}</p>
                 {nocache}
                 <a href="{$deeplink}"><img class="img-responsive img-fluid" src="{$qr}"></a>
                 {/nocache}

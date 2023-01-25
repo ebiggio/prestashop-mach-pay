@@ -1,6 +1,6 @@
 # MACH Pay para PrestaShop 1.7
 
-Módulo de pago para PrestaShop que permite realizar pagos con la aplicación MACH Pay.
+Módulo de pago para PrestaShop que permite realizar pagos con la aplicación MACH.
 
 ## Requerimientos
 
