@@ -356,7 +356,7 @@ class MACHPay extends PaymentModule {
      */
     public function getMACHPayPaymentOptions(): array {
         $machpay_payment_option = new PaymentOption();
-        $machpay_payment_option->setCallToActionText('Pago con MACH Pay')
+        $machpay_payment_option->setCallToActionText('Pago con MACH')
             ->setAction($this->context->link->getModuleLink($this->name, 'createPayment'))
             ->setLogo(Media::getMediaPath(_PS_MODULE_DIR_ . $this->name . '/views/img/machpay.png'));
 
