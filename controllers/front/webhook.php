@@ -85,7 +85,8 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
                 'Cart',
                 (int)$webhook_data['event_upstream_id']);
 
-            return;
+            http_response_code(400);
+            exit;
         }
 
         /*
@@ -109,7 +110,27 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
                 'Cart',
                 (int)$webhook_data['event_upstream_id']);
 
-            return;
+            http_response_code(500);
+            exit;
+        }
+
+        /*
+         * Validamos que el evento que estamos recibiendo corresponda al estado actual del pago en MACH Pay. Si se trata de una devolución, se debe consultar
+         * por el el atributo "state" del objeto "BusinessRefund". En caso contrario, se debe consultar por el atributo "status" del objeto "BusinessPayment"
+         */
+        if ($webhook_data['event_name'] == 'business-refund-completed' && $machpay_business_payment_data['state'] != 'COMPLETED') {
+            $log_message = 'MACH Pay: se recibió una notificación de devolución completada, pero el estado de esta informada por la API es ['
+                . $machpay_business_payment_data['state'] . ']';
+        } elseif (strtoupper(substr($webhook_data['event_name'], 17)) != $machpay_business_payment_data['status']) {
+            $log_message = 'MACH Pay: inconsistencia en notificación recibida por webhook. El evento [' . $webhook_data['event_name']
+                . '] no equivale al estado actual [' . $machpay_business_payment_data['status'] . '] informado por la API';
+        }
+
+        if (isset($log_message)) {
+            PrestaShopLogger::addLog($log_message, 3, null, 'Cart', (int)$webhook_data['event_upstream_id']);
+
+            http_response_code(500);
+            exit;
         }
 
         if ( ! $machpay_ps_id_cart = $this->getIdCartForMACHPayData($business_payment_id)) {
@@ -120,22 +141,19 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
                 'Cart',
                 (int)$webhook_data['event_upstream_id']);
 
-            return;
-        } else {
-            if ($machpay_ps_id_cart != $webhook_data['event_upstream_id']) {
-                PrestaShopLogger::addLog('MACH Pay: evento [' . $webhook_data['event_name'] . '] recibido por webhook para un carrito distinto al asociado a ['
-                    . $business_payment_id . ']: se esperaba [' . $machpay_ps_id_cart . '], se recibió [' . $webhook_data['event_upstream_id'] . ']',
-                    3,
-                    null,
-                    'Cart',
-                    (int)$webhook_data['event_upstream_id']);
+            http_response_code(404);
+            exit;
+        } else if ($machpay_ps_id_cart != $webhook_data['event_upstream_id']) {
+            PrestaShopLogger::addLog('MACH Pay: evento [' . $webhook_data['event_name'] . '] recibido por webhook para un carrito distinto al asociado a ['
+                . $business_payment_id . ']: se esperaba [' . $machpay_ps_id_cart . '], se recibió [' . $webhook_data['event_upstream_id'] . ']',
+                3,
+                null,
+                'Cart',
+                (int)$webhook_data['event_upstream_id']);
 
-                return;
-            }
+            http_response_code(404);
+            exit;
         }
-
-        $cart = new Cart((int)$webhook_data['event_upstream_id']);
-        $existing_order = $this->getOrderFromCart($cart);
 
         if ($webhook_data['event_name'] == 'business-payment-completed') {
             $this->processPaymentComplete($existing_order, $mach_pay_events[$webhook_data['event_name']], $cart, $machpay_business_payment_data
@@ -150,12 +168,17 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
                 $existing_order->setCurrentState($mach_pay_events[$webhook_data['event_name']]);
             }
 
-            DB::getInstance()->update('machpay', ['machpay_webhook_event' => pSQL($webhook_data['event_name'])], 'business_payment_id = "' . pSQL($business_payment_id) . '"');
+            DB::getInstance()->update('machpay', ['machpay_webhook_event' => pSQL($webhook_data['event_name'])], 'business_payment_id = "'
+                . pSQL($business_payment_id) . '"');
         }
+
+        http_response_code(200);
+        exit;
     }
 
     private function getIdCartForMACHPayData(string $business_payment_id): int {
         $sql = "SELECT id_cart FROM " . _DB_PREFIX_ . "machpay WHERE business_payment_id = '" . pSQL($business_payment_id) . "' ORDER BY id_machpay DESC";
+
         return (int)Db::getInstance()->getRow($sql)['id_cart'];
     }
 
