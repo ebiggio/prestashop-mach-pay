@@ -38,7 +38,10 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
         $webhook_notification = file_get_contents('php://input');
 
         if ( ! $webhook_notification) {
-            return;
+            PrestaShopLogger::addLog('MACH Pay: no se pudo capturar el cuerpo de la solicitud del webhook', 3);
+
+            http_response_code(400);
+            exit;
         }
 
         $webhook_data = json_decode($webhook_notification, true);
@@ -257,7 +260,8 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
     private function validatePaymentComplete(int $machpay_amount, $cart): bool {
         // Verificamos si existe ya una orden para este carrito, que tendría un estado distinto al pagado. De ser así, no deberíamos procesar otro pago asociado
         if ($existing_order = $this->getOrderFromCart($cart)) {
-            PrestaShopLogger::addLog('MACH Pay: error en validación del pago completado. Ya existe la orden [' . $existing_order->reference . '] asociada al carrito',
+            PrestaShopLogger::addLog('MACH Pay: error en validación del pago completado. Ya existe la orden ['
+                . $existing_order->reference . '] asociada al carrito',
                 3,
                 null,
                 'Cart',
@@ -269,7 +273,7 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
         try {
             $cart_total = $cart->getOrderTotal();
         } catch (Exception $e) {
-            PrestaShopLogger::addLog('MACH Pay: error al intentar obtener el total del carrito desde la tienda para validar el pago completado en MACH Pay',
+            PrestaShopLogger::addLog('MACH Pay: error al intentar obtener el total del carrito desde la tienda para validar pago completado en MACH Pay',
                 3,
                 null,
                 'Cart',
@@ -308,7 +312,8 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
             try {
                 return new Order($id_order);
             } catch (PrestaShopDatabaseException|PrestaShopException $e) {
-                PrestaShopLogger::addLog('MACH Pay: excepción al intentar obtener el pedido [' . $id_order . '] asociado al carrito: [' . $e->getMessage() . ']',
+                PrestaShopLogger::addLog('MACH Pay: excepción al intentar obtener el pedido [' . $id_order . '] asociado al carrito: ['
+                    . $e->getMessage() . ']',
                     3,
                     null,
                     'Cart',
@@ -332,7 +337,8 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
         }
 
         if ( ! MACHPayAPI::makePOSTRequest('/payments/' . $machpay_business_payment_data['business_payment_id'] . '/reverse', [])) {
-            PrestaShopLogger::addLog('MACH Pay: error al intentar realizar una reversa del pago [' . $machpay_business_payment_data['business_payment_id'] . '] en la API de MACH Pay',
+            PrestaShopLogger::addLog('MACH Pay: error al intentar realizar una reversa del pago ['
+                . $machpay_business_payment_data['business_payment_id'] . '] en la API de MACH Pay',
                 3,
                 null,
                 'Cart',
