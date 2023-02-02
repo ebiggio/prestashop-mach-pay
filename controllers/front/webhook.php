@@ -113,78 +113,8 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
         $existing_order = $this->getOrderFromCart($cart);
 
         if ($webhook_data['event_name'] == 'business-payment-completed') {
-            /*
-             * Notificación de un pago exitoso. Se debe crear un pedido a partir del carrito indicado, posterior a las validaciones correspondientes
-             *
-             * Puede que recibamos una notificación de pago completado para un pedido que ya se aprobó con anterioridad. Quizás, por problemas de red, recibamos
-             * una notificación doble de un pago válido. Verificamos si existe un pedido asociado para el carrito con el estado asociado al evento de pago
-             * completado, ya que en caso de ser así, no necesitamos llevar a cabo ni la confirmación ni la reversa
-             */
-            if ($existing_order && $existing_order->getCurrentState() == $mach_pay_events[$webhook_data['event_name']]) {
-                return;
-            }
-
-            if ($this->validatePaymentComplete((int)$machpay_business_payment_data['amount'], $cart)) {
-                /*
-                 * Revisamos si el pago completado debe ser confirmado en MACH Pay, de acuerdo a la configuración del módulo. Los pagos completados de negocios
-                 * que tengan captura manual deben ser confirmados luego de la generación del pedido. En caso de tratarse de capturas automáticas, esta opción
-                 * debe estar apagada para evitar errores al intentar confirmar pagos ya definidos mediante la API de MACH Pay
-                 */
-                if (Configuration::get('MACHPAY_MANUAL_CONFIRMATION')) {
-                    if ( ! MACHPayAPI::makePOSTRequest('/payments/' . $business_payment_id . '/confirm', [])) {
-                        PrestaShopLogger::addLog('MACH Pay: error al intentar confirmar el pago [' . $business_payment_id . '] en la API de MACH Pay',
-                            3,
-                            null,
-                            'Cart',
-                            $cart->id);
-
-                        DB::getInstance()->update('machpay', ['machpay_webhook_event' => 'prestashop_error'], 'business_payment_id = "' . pSQL($business_payment_id) . '"');
-
-                        $this->reversePayment($machpay_business_payment_data, $cart->id);
-
-                        return;
-                    }
-                }
-
-                try {
-                    $currency = new Currency($cart->id_currency);
-                    $customer = new Customer($cart->id_customer);
-
-                    $this->module->validateOrder(
-                        $cart->id,
-                        $mach_pay_events[$webhook_data['event_name']],
-                        (float)$cart->getOrderTotal(),
-                        $this->module->displayName,
-                        null,
-                        array('transaction_id' => $business_payment_id),
-                        (int)$currency->id,
-                        false,
-                        $customer->secure_key
-                    );
-
-                    /*
-                     * Recién aquí actualizamos la tabla en la BD con el estado de pago completado, para que luego el estado de un pago completado se le informe
-                     * al cliente mediante un EventSource activo en la página que despliega el QR
-                     */
-                    DB::getInstance()->update('machpay', ['machpay_webhook_event' => 'business-payment-completed'], 'business_payment_id = "' . pSQL($business_payment_id) . '"');
-                } catch (Exception $e) {
-                    PrestaShopLogger::addLog('MACH Pay: excepción al intentar generar la orden luego de recibir notificación de pago en MACH Pay: [' . $e->getMessage() . ']',
-                        3,
-                        null,
-                        'Cart',
-                        $cart->id);
-
-                    $this->reversePayment($machpay_business_payment_data, $cart->id);
-
-                    DB::getInstance()->update('machpay', ['machpay_webhook_event' => 'prestashop_error'], 'business_payment_id = "' . pSQL($business_payment_id) . '"');
-
-                    return;
-                }
-            } else {
-                DB::getInstance()->update('machpay', ['machpay_webhook_event' => 'prestashop_error'], 'business_payment_id = "' . pSQL($business_payment_id) . '"');
-
-                $this->reversePayment($machpay_business_payment_data, $cart->id);
-            }
+            $this->processPaymentComplete($existing_order, $mach_pay_events[$webhook_data['event_name']], $cart, $machpay_business_payment_data
+                , $business_payment_id);
         } else {
             // Verificamos si existe un pedido asociado al carrito
             if ($existing_order && $existing_order->getCurrentState() != $mach_pay_events[$webhook_data['event_name']]) {
@@ -202,6 +132,104 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
     private function getIdCartForMACHPayData(string $business_payment_id): int {
         $sql = "SELECT id_cart FROM " . _DB_PREFIX_ . "machpay WHERE business_payment_id = '" . pSQL($business_payment_id) . "' ORDER BY id_machpay DESC";
         return (int)Db::getInstance()->getRow($sql)['id_cart'];
+    }
+
+    /**
+     * Procesa el evento de un pago completado
+     *
+     * @param       $existing_order
+     * @param       $ps_complete_status_id
+     * @param \Cart $cart
+     * @param       $machpay_business_payment_data
+     * @param       $business_payment_id
+     * @return void
+     */
+    public function processPaymentComplete($existing_order, $ps_complete_status_id, Cart $cart, $machpay_business_payment_data, $business_payment_id): void {
+        /*
+         * Puede que recibamos una notificación de pago completado para un pedido que ya se aprobó con anterioridad. Quizás, por problemas de red, recibamos
+         * una notificación doble de un pago válido. Verificamos si existe un pedido asociado para el carrito con el estado asociado al evento de pago
+         * completado, ya que en caso de ser así, no necesitamos llevar a cabo ni la confirmación ni la reversa
+         */
+        if ($existing_order && $existing_order->getCurrentState() == $ps_complete_status_id) {
+            PrestaShopLogger::addLog('MACH Pay: notificación de pago completado para carrito con pedido asociado ['
+                . $existing_order->id . '] y estado [' . $existing_order->getCurrentState() . ']',
+                1,
+                null,
+                'Cart',
+                $cart->id);
+
+            http_response_code(200);
+            exit;
+        }
+
+        if ($this->validatePaymentComplete((int)$machpay_business_payment_data['amount'], $cart)) {
+            /*
+             * Revisamos si el pago completado debe ser confirmado en MACH Pay, de acuerdo a la configuración del módulo. Los pagos completados de negocios
+             * que tengan captura manual deben ser confirmados luego de la generación del pedido. En caso de tratarse de capturas automáticas, esta opción
+             * debe estar apagada para evitar errores al intentar confirmar pagos ya definidos mediante la API de MACH Pay
+             */
+            if (Configuration::get('MACHPAY_MANUAL_CONFIRMATION')) {
+                if ( ! MACHPayAPI::makePOSTRequest('/payments/' . $business_payment_id . '/confirm', [])) {
+                    PrestaShopLogger::addLog('MACH Pay: error al intentar confirmar el pago [' . $business_payment_id . '] en la API de MACH Pay',
+                        3,
+                        null,
+                        'Cart',
+                        $cart->id);
+
+                    DB::getInstance()->update('machpay', ['machpay_webhook_event' => 'prestashop_error'], 'business_payment_id = "'
+                        . pSQL($business_payment_id) . '"');
+
+                    $this->reversePayment($machpay_business_payment_data, $cart->id);
+
+                    http_response_code(500);
+                    exit;
+                }
+            }
+
+            try {
+                $currency = new Currency($cart->id_currency);
+                $customer = new Customer($cart->id_customer);
+
+                $this->module->validateOrder(
+                    $cart->id,
+                    $ps_complete_status_id,
+                    (float)$cart->getOrderTotal(),
+                    $this->module->displayName,
+                    null,
+                    array('transaction_id' => $business_payment_id),
+                    (int)$currency->id,
+                    false,
+                    $customer->secure_key
+                );
+
+                /*
+                 * Recién aquí actualizamos la tabla en la BD con el estado de pago completado, para que luego dicho cambio le sea informado al cliente
+                 * mediante un EventSource activo en la página que despliega el QR
+                 */
+                DB::getInstance()->update('machpay', ['machpay_webhook_event' => 'business-payment-completed'], 'business_payment_id = "'
+                    . pSQL($business_payment_id) . '"');
+            } catch (Exception $e) {
+                PrestaShopLogger::addLog('MACH Pay: excepción al intentar generar la orden luego de recibir notificación de pago por webhook: ['
+                    . $e->getMessage() . ']',
+                    3,
+                    null,
+                    'Cart',
+                    $cart->id);
+
+                $this->reversePayment($machpay_business_payment_data, $cart->id);
+
+                DB::getInstance()->update('machpay', ['machpay_webhook_event' => 'prestashop_error'], 'business_payment_id = "'
+                    . pSQL($business_payment_id) . '"');
+
+                http_response_code(503);
+                exit;
+            }
+        } else {
+            DB::getInstance()->update('machpay', ['machpay_webhook_event' => 'prestashop_error'], 'business_payment_id = "'
+                . pSQL($business_payment_id) . '"');
+
+            $this->reversePayment($machpay_business_payment_data, $cart->id);
+        }
     }
 
     private function validatePaymentComplete(int $machpay_amount, $cart): bool {
