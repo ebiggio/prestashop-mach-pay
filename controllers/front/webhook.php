@@ -100,8 +100,23 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
             'event_name' => pSQL($webhook_data['event_name']),
         ]);
 
-        // Consultamos por el detalle de la transacción que desencadenó el webhook en MACH Pay
-        if ($machpay_get_response = MACHPayAPI::makeGETRequest('/payments/' . $business_payment_id)) {
+        /*
+         * Consultamos por el detalle de la transacción que desencadenó el webhook en MACH Pay
+         *
+         * Si se recibe un evento de pago reversado, el objeto "BusinessPayment" no estará disponible por API. En su lugar, debemos consultar por
+         * "BusinessRefund", que es el objeto que se crea cuando se realiza una devolución
+         */
+        if ($webhook_data['event_name'] == 'business-refund-completed') {
+            // TODO Confirmar el ciclo de vida de una devolución. ¿Por qué estados puede pasar una devolución? ¿Qué sucede si se realiza una devolución parcial?
+            http_response_code(200);
+
+            exit;
+            // $machpay_get_response = MACHPayAPI::makeGETRequest('/business-api/refunds/' . $business_payment_id);
+        } else {
+            $machpay_get_response = MACHPayAPI::makeGETRequest('/payments/' . $business_payment_id);
+        }
+
+        if ($machpay_get_response) {
             $machpay_business_payment_data = json_decode($machpay_get_response, true);
         } else {
             PrestaShopLogger::addLog('MACH Pay: error al consultar por la información del pago [' . $business_payment_id . '] en la API de MACH Pay',
