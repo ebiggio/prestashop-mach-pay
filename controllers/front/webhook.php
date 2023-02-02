@@ -44,6 +44,28 @@ class MACHPayWebhookModuleFrontController extends ModuleFrontController {
         $webhook_data = json_decode($webhook_notification, true);
         $business_payment_id = $webhook_data['event_resource_id']; // event_resource_id = business_payment_id = token
 
+        if ( ! isset($webhook_data['event_upstream_id'])) {
+            PrestaShopLogger::addLog('MACH Pay: no se pudo obtener el ID del carrito desde el cuerpo de la solicitud del webhook (event_upstream_id)'
+                , 3);
+
+            http_response_code(400);
+            exit;
+        }
+
+        $cart = new Cart((int)$webhook_data['event_upstream_id']); // event_upstream_id = id_cart
+        $existing_order = $this->getOrderFromCart($cart);
+
+        /*
+         * Puede que recibamos un webhook para un pedido que exista, pero que no haya sido creado por este módulo. Por ejemplo, un cliente puede haber intentado
+         * pagar con MACH, para luego arrepentirse y proceder con otro método de pago. En ese caso, existirá un pedido en la tienda asociado al carrito que se
+         * informó cuando se creó la intención de pago en MACH. Si el método de pago utilizado no fue MACH, no debemos procesar el evento, y simplemente
+         * notificamos que el webhook fue recibido exitosamente
+         */
+        if ($existing_order && $existing_order->payment != $this->module->displayName) {
+            http_response_code(200);
+            exit;
+        }
+
         // TODO Quizás sea una buena idea que estos valores sean configurables por el módulo
         $mach_pay_events = [
             'business-payment-completed' => Configuration::get('PS_OS_PAYMENT'),   // Pago completado
